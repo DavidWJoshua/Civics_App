@@ -145,7 +145,7 @@ class _CitizenHomeState extends State<CitizenHome> {
                     const SizedBox(height: 20),
                     _heroActionCard(
                       context,
-                      title: "My Submissions",
+                      title: "My Complaints",
                       subtitle: "Track status and provide feedback on your reports.",
                       icon: Icons.assignment_rounded,
                       color: AppColors.success,

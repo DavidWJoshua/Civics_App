@@ -56,7 +56,7 @@ class _CommissionerDashboardState extends State<CommissionerDashboard> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Commissioner Dashboard"),
+        title: const Text("Health Inspector Dashboard"),
         actions: [
           IconButton(
             icon: const Icon(Icons.person),

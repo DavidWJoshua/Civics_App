@@ -81,3 +81,15 @@ func (s *Service) SubmitPumpingYearlyLog(ctx context.Context, log *PumpingYearly
 func (s *Service) SubmitSTPMaintenanceLog(ctx context.Context, log *STPMaintenanceLog) error {
 	return s.Repo.CreateSTPMaintenanceLog(ctx, log)
 }
+
+func (s *Service) SubmitSTPMonthlyLog(ctx context.Context, log *STPMonthlyLog) error {
+	return s.Repo.CreateSTPMonthlyLog(ctx, log)
+}
+
+func (s *Service) SubmitSTPYearlyLog(ctx context.Context, log *STPYearlyLog) error {
+	return s.Repo.CreateSTPYearlyLog(ctx, log)
+}
+
+func (s *Service) GetTaskStatus(ctx context.Context, stationID int, stationType string) (*TaskStatus, error) {
+	return s.Repo.GetTaskStatus(ctx, stationID, stationType)
+}

@@ -53,7 +53,7 @@ class _JEDashboardState extends State<JEDashboard> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Junior Engineer"),
+        title: const Text("Sanitary Inspector"),
         actions: [
           IconButton(
             icon: const Icon(Icons.person),

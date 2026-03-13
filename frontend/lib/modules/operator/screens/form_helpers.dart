@@ -23,12 +23,12 @@ mixin FormHelpers<T extends StatefulWidget> on State<T> {
     );
   }
 
-  Widget buildTextField(String label, String key, {bool isNumber = false, bool isInt = false, int maxLines = 1}) {
+  Widget buildTextField(String label, String key, {bool isNumber = false, bool isInt = false, int maxLines = 1, bool required = false}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16.0),
       child: TextFormField(
         decoration: InputDecoration(
-          labelText: label,
+          labelText: required ? "$label *" : label,
           filled: true,
           fillColor: Colors.grey[50],
           border: OutlineInputBorder(
@@ -42,6 +42,14 @@ mixin FormHelpers<T extends StatefulWidget> on State<T> {
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
             borderSide: const BorderSide(color: AppColors.primary, width: 2),
+          ),
+          errorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: Colors.red, width: 1.5),
+          ),
+          focusedErrorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: Colors.red, width: 2),
           ),
           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         ),
@@ -63,17 +71,20 @@ mixin FormHelpers<T extends StatefulWidget> on State<T> {
           }
         },
         validator: (val) {
-           if (isNumber && val != null && val.isNotEmpty) {
-             if (isInt && int.tryParse(val) == null) return "Enter valid integer";
-             if (!isInt && double.tryParse(val) == null) return "Enter valid number";
-           }
-           return null;
+          if (required && (val == null || val.trim().isEmpty)) {
+            return "$label is required";
+          }
+          if (isNumber && val != null && val.isNotEmpty) {
+            if (isInt && int.tryParse(val) == null) return "Enter valid integer";
+            if (!isInt && double.tryParse(val) == null) return "Enter valid number";
+          }
+          return null;
         },
       ),
     );
   }
 
-  Widget buildDropdown(String label, String key, List<String> items) {
+  Widget buildDropdown(String label, String key, List<String> items, {bool required = true}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16.0),
       child: DropdownButtonFormField<String>(
@@ -93,10 +104,20 @@ mixin FormHelpers<T extends StatefulWidget> on State<T> {
             borderRadius: BorderRadius.circular(12),
             borderSide: const BorderSide(color: AppColors.primary, width: 2),
           ),
+          errorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: Colors.red, width: 1.5),
+          ),
+          focusedErrorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: Colors.red, width: 2),
+          ),
           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         ),
+        hint: const Text("Select...", style: TextStyle(color: Colors.grey)),
         items: items.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
         onChanged: (val) => formData[key] = val,
+        validator: required ? (val) => val == null ? "Please select $label" : null : null,
       ),
     );
   }

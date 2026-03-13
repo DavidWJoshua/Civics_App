@@ -381,7 +381,7 @@ class _OfficerDashboardState extends State<OfficerDashboard> {
             mainAxisSize: MainAxisSize.min,
             children: [
               const Text(
-                "Your application will be sent to the Junior Engineer for approval. You will remain active until approved.",
+                "Your application will be sent to the Sanitary Inspector for approval. You will remain active until approved.",
                 style: TextStyle(color: Colors.grey, fontSize: 13),
               ),
               const SizedBox(height: 16),

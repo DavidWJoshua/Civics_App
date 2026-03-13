@@ -17,6 +17,8 @@ class _CitizenLoginPhoneState extends State<CitizenLoginPhone> {
 
   String captchaId = "";
   bool loading = false;
+  bool captchaLoading = false;
+  String? captchaError;
 
   @override
   void initState() {
@@ -25,18 +27,25 @@ class _CitizenLoginPhoneState extends State<CitizenLoginPhone> {
   }
 
   Future<void> refreshCaptcha() async {
+    setState(() {
+      captchaLoading = true;
+      captchaError = null;
+    });
     try {
       final res = await AuthService.getCaptcha();
       if (!mounted) return;
       setState(() {
         captchaId = res["captchaID"]!;
+        captchaLoading = false;
+        captchaError = null;
         captchaCtrl.clear();
       });
-    } catch (_) {
+    } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Failed to load captcha")),
-      );
+      setState(() {
+        captchaLoading = false;
+        captchaError = "Failed to load captcha. Tap refresh to retry.";
+      });
     }
   }
 
@@ -176,49 +185,84 @@ class _CitizenLoginPhoneState extends State<CitizenLoginPhone> {
 
                       const SizedBox(height: 20),
 
-                      if (captchaId.isNotEmpty) ...[
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Container(
-                                height: 50,
-                                decoration: BoxDecoration(
-                                  border: Border.all(
-                                    color: Colors.grey[300]!,
-                                  ),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(12),
-                                  child: Image.network(
-                                    "${ApiConstants.baseUrl}/api/auth/citizen/captcha/$captchaId",
-                                    fit: BoxFit.cover,
-                                    key: ValueKey(captchaId),
-                                  ),
-                                ),
+                      // --- CAPTCHA SECTION ---
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Container(
+                              height: 60,
+                              decoration: BoxDecoration(
+                                border: Border.all(color: Colors.grey[300]!),
+                                borderRadius: BorderRadius.circular(12),
+                                color: Colors.grey[50],
                               ),
-                            ),
-                            const SizedBox(width: 8),
-                            IconButton(
-                              onPressed: refreshCaptcha,
-                              icon: const Icon(
-                                Icons.refresh,
-                                color: AppColors.primary,
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(12),
+                                child: captchaLoading
+                                    ? const Center(
+                                        child: CircularProgressIndicator(strokeWidth: 2),
+                                      )
+                                    : captchaError != null
+                                        ? Center(
+                                            child: Text(
+                                              "Tap ↻ to load captcha",
+                                              style: TextStyle(
+                                                color: Colors.red[400],
+                                                fontSize: 13,
+                                              ),
+                                            ),
+                                          )
+                                        : captchaId.isEmpty
+                                            ? const Center(
+                                                child: CircularProgressIndicator(strokeWidth: 2),
+                                              )
+                                            : Image.network(
+                                                "${ApiConstants.baseUrl}/api/auth/citizen/captcha/$captchaId",
+                                                fit: BoxFit.contain,
+                                                key: ValueKey(captchaId),
+                                                loadingBuilder: (context, child, progress) {
+                                                  if (progress == null) return child;
+                                                  return const Center(
+                                                    child: CircularProgressIndicator(strokeWidth: 2),
+                                                  );
+                                                },
+                                                errorBuilder: (context, error, stack) {
+                                                  return Center(
+                                                    child: Text(
+                                                      "Image failed — tap ↻",
+                                                      style: TextStyle(
+                                                        color: Colors.red[400],
+                                                        fontSize: 13,
+                                                      ),
+                                                    ),
+                                                  );
+                                                },
+                                              ),
                               ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 20),
-                        TextField(
-                          controller: captchaCtrl,
-                          decoration: InputDecoration(
-                            labelText: "Enter Captcha",
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
                             ),
                           ),
+                          const SizedBox(width: 8),
+                          IconButton(
+                            onPressed: captchaLoading ? null : refreshCaptcha,
+                            icon: Icon(
+                              Icons.refresh,
+                              color: captchaLoading
+                                  ? Colors.grey
+                                  : AppColors.primary,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: captchaCtrl,
+                        decoration: InputDecoration(
+                          labelText: "Enter Captcha",
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                         ),
-                      ],
+                      ),
 
                       const SizedBox(height: 24),
 

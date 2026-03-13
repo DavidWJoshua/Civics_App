@@ -52,7 +52,7 @@ class _MyComplaintsState extends State<MyComplaints> {
     return Scaffold(
       appBar: AppBar(
         title: const Text(
-          "My Submissions",
+          "My Complaints",
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         backgroundColor:AppColors.primary,
