@@ -1,0 +1,2 @@
+ALTER TABLE complaints ADD COLUMN IF NOT EXISTS rating INT;
+ALTER TABLE complaints ADD COLUMN IF NOT EXISTS feedback_text TEXT;
