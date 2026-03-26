@@ -1,0 +1,32 @@
+[
+  {
+    "id": "03-23-2026-566136",
+    "officer_id": "da0be945-6d0b-4733-99eb-2eeace7d7f68",
+    "status": "ALLOCATED",
+    "ward": "8"
+  },
+  {
+    "id": "e75da68e-6e61-442a-8ef8-60de2db4e737",
+    "officer_id": "da0be945-6d0b-4733-99eb-2eeace7d7f68",
+    "status": "PENDING",
+    "ward": "2"
+  },
+  {
+    "id": "8ce88230-343f-473f-abfc-fc164b60661a",
+    "officer_id": "NULL",
+    "status": "OPEN",
+    "ward": "4"
+  },
+  {
+    "id": "2f088258-2494-480f-8290-b6adb6fccedb",
+    "officer_id": "NULL",
+    "status": "OPEN",
+    "ward": "7"
+  },
+  {
+    "id": "794564a8-327f-4753-b0f9-dfb9bdb3f610",
+    "officer_id": "da0be945-6d0b-4733-99eb-2eeace7d7f68",
+    "status": "PENDING",
+    "ward": "3"
+  }
+]
