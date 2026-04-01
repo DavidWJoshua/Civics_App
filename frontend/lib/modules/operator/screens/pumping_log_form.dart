@@ -1,9 +1,12 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../../core/utils/token_storage.dart';
 import '../../citizen/screens/citizen_login_phone.dart';
 import '../models/operator_models.dart';
 import '../services/operator_service.dart';
 import '../../../core/theme/app_colors.dart';
+import 'package:intl/intl.dart';
 
 class PumpingLogForm extends StatefulWidget {
   final Station station;
@@ -98,6 +101,8 @@ class _PumpingLogFormState extends State<PumpingLogForm> {
     switch (freq) {
       case 'daily':
         return [
+          _section("Shift Date & Info"),
+          _readOnlyText("Log Date", DateFormat('EEEE, MMMM d, yyyy').format(DateTime.now())),
           _dropdown("Shift Type", "shift_type", ["Day", "Night"], required: true),
           _text("Equipment ID (Optional)", "equipment_id", isNumber: true, isInt: true),
           _dropdown("Pump Running Status", "pump_status", ["Running", "Standby", "Stopped"], required: true),
@@ -181,6 +186,18 @@ class _PumpingLogFormState extends State<PumpingLogForm> {
         ),
       );
 
+  Widget _readOnlyText(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: TextFormField(
+        initialValue: value,
+        decoration: _inputDec(label).copyWith(fillColor: Colors.grey[100]),
+        enabled: false,
+        style: const TextStyle(color: Colors.black87),
+      ),
+    );
+  }
+
   Widget _text(String label, String key, {bool isNumber = false, bool isInt = false, bool required = false}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
@@ -244,8 +261,25 @@ class _PumpingLogFormState extends State<PumpingLogForm> {
         children: [
           Text(label, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
           const SizedBox(height: 8),
+          if (_data[key] != null && _data[key].toString().length > 100)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8.0),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Image.memory(base64Decode(_data[key]), height: 100, width: 100, fit: BoxFit.cover),
+              )
+            ),
           OutlinedButton.icon(
-            onPressed: () {},
+            onPressed: () async {
+              final picker = ImagePicker();
+              final pickedFile = await picker.pickImage(source: ImageSource.camera, imageQuality: 50);
+              if (pickedFile != null) {
+                final bytes = await pickedFile.readAsBytes();
+                setState(() {
+                   _data[key] = base64Encode(bytes);
+                });
+              }
+            },
             icon: const Icon(Icons.camera_alt),
             label: Text(_data[key] != null ? "Retake Photo" : "Take Photo"),
             style: OutlinedButton.styleFrom(foregroundColor: AppColors.primary),

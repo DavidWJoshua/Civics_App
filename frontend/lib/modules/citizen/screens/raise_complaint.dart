@@ -183,17 +183,36 @@ class _RaiseComplaintState extends State<RaiseComplaint> with WidgetsBindingObse
 
           _areaCtrl.text = detectedArea;
 
-          // Try to extract Ward number from all available fields
+          // Try to get Ward from backend API using coordinates
           String ward = "";
-          RegExp wardRegex =
-              RegExp(r'Ward\s*(?:No\.?)?\s*(\d+)', caseSensitive: false);
+          try {
+            final token = await TokenStorage.getToken();
+            final wardResponse = await http.get(
+              Uri.parse("${ApiConstants.baseUrl}/api/citizen/ward?lat=${pos.latitude}&lng=${pos.longitude}"),
+              headers: {"Authorization": "Bearer $token"},
+            );
+            if (wardResponse.statusCode == 200) {
+              final wardData = jsonDecode(wardResponse.body);
+              if (wardData['ward'] != null && wardData['ward'].toString().trim().isNotEmpty) {
+                ward = wardData['ward'].toString();
+              }
+            }
+          } catch (e) {
+            debugPrint("Failed to fetch ward from KML API: $e");
+          }
 
-          for (var field in allFields) {
-            if (field != null) {
-              Match? match = wardRegex.firstMatch(field);
-              if (match != null) {
-                ward = match.group(1) ?? "";
-                break;
+          // Fallback to regex if backend fails
+          if (ward.isEmpty) {
+            RegExp wardRegex =
+                RegExp(r'Ward\s*(?:No\.?)?\s*(\d+)', caseSensitive: false);
+
+            for (var field in allFields) {
+              if (field != null) {
+                Match? match = wardRegex.firstMatch(field);
+                if (match != null) {
+                  ward = match.group(1) ?? "";
+                  break;
+                }
               }
             }
           }

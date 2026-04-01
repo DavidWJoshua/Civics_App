@@ -30,8 +30,8 @@ func (r *Repository) CreateComplaintWithAssignmentTx(
 	// 1️⃣ Insert Complaint
 	err = tx.QueryRow(ctx,
 		`INSERT INTO complaints
-		(citizen_id, category, severity, latitude, longitude, street, area, ward, city, location_json, image_url)
-		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+		(id, citizen_id, category, severity, latitude, longitude, street, area, ward, city, location_json, image_url)
+		VALUES (gen_random_uuid(),$1,$2,$3,$4,$5,$6,$7,NULLIF($8, '')::INT,$9,$10::jsonb,$11)
 		RETURNING id`,
 		citizenID,
 		req.Category,
@@ -42,7 +42,7 @@ func (r *Repository) CreateComplaintWithAssignmentTx(
 		req.Area,
 		req.Ward,
 		req.City,
-		locationJSON,
+		string(locationJSON),
 		req.ImageURL,
 	).Scan(&complaintID)
 
@@ -55,8 +55,8 @@ func (r *Repository) CreateComplaintWithAssignmentTx(
 	err = tx.QueryRow(ctx,
 		`SELECT op.user_id
 		 FROM officer_profiles op
-		 WHERE op.ward_from <= $1
-		   AND op.ward_to >= $1
+		 WHERE op.ward_from <= NULLIF($1, '')::INT
+		   AND op.ward_to >= NULLIF($1, '')::INT
 		   AND op.is_active = TRUE
 		   AND NOT EXISTS (
 		       SELECT 1 FROM leave_applications ol
@@ -77,8 +77,8 @@ func (r *Repository) CreateComplaintWithAssignmentTx(
 	// 3️⃣ Insert Assignment
 	_, err = tx.Exec(ctx,
 		`INSERT INTO work_order_assignments
-		 (complaint_id, officer_id, assigned_role, is_active, created_at)
-		 VALUES ($1,$2,'FIELD_OFFICER',TRUE,NOW())`,
+		 (id, complaint_id, officer_id, assigned_role, is_active, created_at)
+		 VALUES (gen_random_uuid(),$1,$2,'FIELD_OFFICER',TRUE,NOW())`,
 		complaintID,
 		officerID,
 	)

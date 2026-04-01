@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"civic-complaint-system/backend/internal/ml"
+	"civic-complaint-system/backend/pkg/spatial"
 
 	"civic-complaint-system/backend/config"
 
@@ -51,6 +52,11 @@ func (h *Handler) RaiseComplaint(c *gin.Context) {
 	lng, _ := strconv.ParseFloat(lngStr, 64)
 	var locationMap map[string]interface{}
 	json.Unmarshal([]byte(locationStr), &locationMap)
+
+	// 3.5 AUTO-DETECT WARD FROM COORDINATES
+	if ward == "" && lat != 0 && lng != 0 {
+		ward = spatial.GetWardFromPoint(lat, lng)
+	}
 
 	// 4. Handle Image Upload
 	var imageURL string
@@ -102,10 +108,17 @@ func (h *Handler) RaiseComplaint(c *gin.Context) {
 		ImageURL:  imageURL,
 	}
 
+	// Make sure req.Ward is purely numerical for the DB, or store as "" which might throw errors depending on DB driver.
+	// But it's assumed DB handles "19", etc. safely when cast as INT. If req.Ward == "Unknown", it might fail. Only keep numbers.
+	if req.Ward == "Unknown" || req.Ward == "" {
+		req.Ward = "" // Will handle in repository cautiously, but let's leave it as is for now.
+	}
+
 	citizenID := c.GetString("user_id")
 
 	id, err := h.Service.RaiseComplaint(c, citizenID, req)
 	if err != nil {
+		fmt.Printf("Error creating complaint: %v\n", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create complaint"})
 		return
 	}
@@ -144,6 +157,21 @@ func (h *Handler) Predict(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, prediction)
+}
+
+func (h *Handler) GetWard(c *gin.Context) {
+	latStr := c.Query("lat")
+	lngStr := c.Query("lng")
+	
+	lat, _ := strconv.ParseFloat(latStr, 64)
+	lng, _ := strconv.ParseFloat(lngStr, 64)
+
+	ward := ""
+	if lat != 0 && lng != 0 {
+		ward = spatial.GetWardFromPoint(lat, lng)
+	}
+
+	c.JSON(http.StatusOK, gin.H{"ward": ward})
 }
 
 func (h *Handler) GetComplaints(c *gin.Context) {

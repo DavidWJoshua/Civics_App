@@ -7,6 +7,7 @@ import 'lifting_log_form.dart';
 import 'pumping_log_form.dart';
 import 'stp_log_form.dart';
 import '../../../core/theme/app_colors.dart';
+import 'package:intl/intl.dart';
 
 class OperatorTaskList extends StatefulWidget {
   final Station station;
@@ -75,6 +76,8 @@ class _OperatorTaskListState extends State<OperatorTaskList> {
                 children: [
                   _buildInfoCard(),
                   const SizedBox(height: 16),
+                  _buildDateIndicator(),
+                  const SizedBox(height: 16),
                   _buildTaskTile(
                     context,
                     "Daily Log",
@@ -110,6 +113,37 @@ class _OperatorTaskListState extends State<OperatorTaskList> {
                 ],
               ),
             ),
+    );
+  }
+
+  Widget _buildDateIndicator() {
+    final now = DateTime.now();
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.calendar_month, color: AppColors.primary, size: 20),
+              const SizedBox(width: 8),
+              Text(
+                DateFormat('EEEE, MMMM d, yyyy').format(now),
+                style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+              ),
+            ],
+          ),
+          const Text(
+            "SHIFT ACTIVE",
+            style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 10),
+          ),
+        ],
+      ),
     );
   }
 
@@ -210,7 +244,15 @@ class _OperatorTaskListState extends State<OperatorTaskList> {
                   ),
                   const SizedBox(width: 4),
                   Text(
-                    done ? "Submitted Today" : "Pending",
+                    done
+                        ? (frequency == 'daily'
+                            ? "Submitted Today"
+                            : frequency == 'weekly'
+                                ? "Submitted This Week"
+                                : frequency == 'monthly'
+                                    ? "Submitted This Month"
+                                    : "Submitted This Year")
+                        : "Pending",
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,

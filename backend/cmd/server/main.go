@@ -19,6 +19,7 @@ import (
 	"civic-complaint-system/backend/internal/ml"
 	"civic-complaint-system/backend/internal/operator"
 	"civic-complaint-system/backend/internal/scheduler"
+	"civic-complaint-system/backend/pkg/spatial"
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
@@ -48,6 +49,16 @@ func main() {
 		log.Fatal("❌ DB connection failed:", err)
 	}
 	log.Println("✅ PostgreSQL connected successfully")
+
+	// ===========================
+	// LOAD WARDS FOR GEOLOCATION
+	// ===========================
+	wardsFilePath := "../../resources/wards.json"
+	if err := spatial.LoadWards(wardsFilePath); err != nil {
+		log.Printf("⚠️ Warning: Failed to load wards.json: %v. Ward auto-detection will not work.", err)
+	} else {
+		log.Println("✅ Wards loaded successfully for automatic ward detection")
+	}
 
 	// ===========================
 	// START SLA AUTO ESCALATION CRON
@@ -120,6 +131,7 @@ func main() {
 	citizenRoutes.GET("/complaints", complaintHandler.GetComplaints)
 	citizenRoutes.POST("/complaints/:id/feedback", complaintHandler.SubmitFeedback)
 	citizenRoutes.POST("/predict", complaintHandler.Predict)
+	citizenRoutes.GET("/ward", complaintHandler.GetWard)
 
 	// ===========================
 	// FIELD OFFICER ROUTES
