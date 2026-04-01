@@ -74,29 +74,11 @@ class AuthService {
     return jsonDecode(response.body);
   }
   static Future<Map<String, String>> authHeaders() async {
-    final token = await TokenStorage.getToken();
-    return {
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer $token',
-    };
-  }
+  final token = await TokenStorage.getToken();
+  return {
+    'Content-Type': 'application/json',
+    'Authorization': 'Bearer $token',
+  };
+}
 
-  static Future<void> logout() async {
-    final token = await TokenStorage.getToken();
-    if (token == null) return;
-
-    try {
-      await http.post(
-        Uri.parse("${ApiConstants.baseUrl}/api/auth/logout"),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-      );
-    } catch (e) {
-      // Ignore errors on logout network call, we still want to clear local storage
-    } finally {
-      await TokenStorage.clear();
-    }
-  }
 }

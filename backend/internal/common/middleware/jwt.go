@@ -7,7 +7,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 var jwtSecret []byte
@@ -17,7 +16,7 @@ func SetJWTSecret(secret string) {
 	jwtSecret = []byte(secret)
 }
 
-func JWTAuthMiddleware(db *pgxpool.Pool) gin.HandlerFunc {
+func JWTAuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
 
@@ -54,21 +53,6 @@ func JWTAuthMiddleware(db *pgxpool.Pool) gin.HandlerFunc {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid token claims"})
 			c.Abort()
 			return
-		}
-
-		// Validate JTI against sessions
-		if jti, ok := claims["jti"].(string); ok {
-			var exists bool
-			err := db.QueryRow(c.Request.Context(), "SELECT EXISTS(SELECT 1 FROM user_sessions WHERE jti = $1)", jti).Scan(&exists)
-			if err != nil || !exists {
-				c.JSON(http.StatusUnauthorized, gin.H{"error": "session expired or logged out"})
-				c.Abort()
-				return
-			}
-			c.Set("jti", jti)
-		} else {
-			// Backwards compatibility for existing tokens without jti
-			log.Println("⚠️ JWT missing jti, allowing legacy token temporarily")
 		}
 
 		// Attach to context

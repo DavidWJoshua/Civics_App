@@ -74,7 +74,19 @@ class OperatorService {
   static Future<void> submitStpLog(Map<String, dynamic> log, String frequency) async {
     final endpoint = frequency.toLowerCase();
     final headers = await _headers();
-    final url = "${ApiConstants.baseUrl}/api/operator/stp/$endpoint-log";
+    
+    String url;
+    if (endpoint == 'weekly') {
+      // Weekly STP uses the maintenance-log endpoint with type=weekly
+      log['type'] = 'weekly';
+      url = "${ApiConstants.baseUrl}/api/operator/stp/maintenance-log";
+    } else if (endpoint == 'monthly') {
+      url = "${ApiConstants.baseUrl}/api/operator/stp/monthly-log";
+    } else if (endpoint == 'yearly') {
+      url = "${ApiConstants.baseUrl}/api/operator/stp/yearly-log";
+    } else {
+      url = "${ApiConstants.baseUrl}/api/operator/stp/$endpoint-log";
+    }
     
     final response = await http.post(
       Uri.parse(url),
@@ -86,5 +98,24 @@ class OperatorService {
        if (response.statusCode == 404) throw Exception("Endpoint $endpoint-log not implemented on backend");
        throw Exception("Failed to submit log: ${response.body}");
     }
+  }
+  // --- Task Status ---
+  static Future<Map<String, bool>> getTodayTaskStatus(int stationId, String stationType) async {
+    final headers = await _headers();
+    final url = "${ApiConstants.baseUrl}/api/operator/task-status?station_id=$stationId&type=$stationType";
+    final response = await http.get(Uri.parse(url), headers: headers);
+
+    if (response.statusCode != 200) {
+      // If backend fails, return all false (don't crash the UI)
+      return {'daily': false, 'weekly': false, 'monthly': false, 'yearly': false};
+    }
+
+    final data = jsonDecode(response.body);
+    return {
+      'daily': data['daily'] ?? false,
+      'weekly': data['weekly'] ?? false,
+      'monthly': data['monthly'] ?? false,
+      'yearly': data['yearly'] ?? false,
+    };
   }
 }

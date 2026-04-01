@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../../../core/utils/token_storage.dart';
-import '../../../core/services/auth_service.dart';
 import '../../citizen/screens/citizen_login_phone.dart';
 import '../models/operator_models.dart';
 import '../services/operator_service.dart';
@@ -64,7 +63,7 @@ class _OperatorDashboardState extends State<OperatorDashboard> {
   }
 
   Future<void> _logout() async {
-    await AuthService.logout();
+    await TokenStorage.clear();
     if (!mounted) return;
     Navigator.pushAndRemoveUntil(
       context,

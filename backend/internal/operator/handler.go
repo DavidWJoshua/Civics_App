@@ -270,3 +270,61 @@ func (h *Handler) SubmitSTPMaintenanceLog(c *gin.Context) {
 	}
 	c.JSON(http.StatusCreated, log)
 }
+
+func (h *Handler) SubmitSTPMonthlyLog(c *gin.Context) {
+	var log STPMonthlyLog
+	if err := c.ShouldBindJSON(&log); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	userID := c.GetString("user_id")
+	if userID == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+	log.OperatorID = userID
+	if err := h.Service.SubmitSTPMonthlyLog(c.Request.Context(), &log); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusCreated, log)
+}
+
+func (h *Handler) SubmitSTPYearlyLog(c *gin.Context) {
+	var log STPYearlyLog
+	if err := c.ShouldBindJSON(&log); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	userID := c.GetString("user_id")
+	if userID == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+	log.OperatorID = userID
+	if err := h.Service.SubmitSTPYearlyLog(c.Request.Context(), &log); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusCreated, log)
+}
+
+func (h *Handler) GetTaskStatus(c *gin.Context) {
+	stationIDStr := c.Query("station_id")
+	stationType := c.Query("type")
+	if stationIDStr == "" || stationType == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "station_id and type are required"})
+		return
+	}
+	stationID, err := strconv.Atoi(stationIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid station_id"})
+		return
+	}
+	status, err := h.Service.GetTaskStatus(c.Request.Context(), stationID, stationType)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, status)
+}

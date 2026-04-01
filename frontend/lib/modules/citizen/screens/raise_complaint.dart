@@ -183,45 +183,22 @@ class _RaiseComplaintState extends State<RaiseComplaint> with WidgetsBindingObse
 
           _areaCtrl.text = detectedArea;
 
-          // Call the backend to get the precise spatial ward
-          try {
-            final token = await TokenStorage.getToken();
-            final wardResponse = await http.get(
-              Uri.parse(
-                  "${ApiConstants.baseUrl}/api/citizen/ward?lat=${pos.latitude}&lng=${pos.longitude}"),
-              headers: {
-                if (token != null) "Authorization": "Bearer $token"
-              },
-            );
+          // Try to extract Ward number from all available fields
+          String ward = "";
+          RegExp wardRegex =
+              RegExp(r'Ward\s*(?:No\.?)?\s*(\d+)', caseSensitive: false);
 
-            String fetchedWard = "";
-            if (wardResponse.statusCode == 200) {
-              final wardData = jsonDecode(wardResponse.body);
-              fetchedWard = wardData['ward'] ?? "";
-            }
-
-            if (fetchedWard.isNotEmpty) {
-               _wardCtrl.text = fetchedWard;
-            } else {
-              // Fallback
-              String ward = "";
-              RegExp wardRegex =
-                  RegExp(r'Ward\s*(?:No\.?)?\s*(\d+)', caseSensitive: false);
-
-              for (var field in allFields) {
-                if (field != null) {
-                  Match? match = wardRegex.firstMatch(field);
-                  if (match != null) {
-                    ward = match.group(1) ?? "";
-                    break;
-                  }
-                }
+          for (var field in allFields) {
+            if (field != null) {
+              Match? match = wardRegex.firstMatch(field);
+              if (match != null) {
+                ward = match.group(1) ?? "";
+                break;
               }
-              _wardCtrl.text = ward;
             }
-          } catch (e) {
-             debugPrint("Ward fetch error: $e");
           }
+
+          _wardCtrl.text = ward;
         }
       } catch (e) {
         debugPrint("Geocoding failed: $e");

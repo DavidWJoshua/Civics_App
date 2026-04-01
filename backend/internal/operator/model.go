@@ -242,3 +242,35 @@ type STPMaintenanceLog struct {
 	LabCalibrated        bool   `json:"lab_calibrated" db:"lab_calibrated"`
 	AnalyzerStatus       string `json:"analyzer_status" db:"analyzer_status"`
 }
+
+type STPMonthlyLog struct {
+	ID                 int    `json:"id" db:"id"`
+	StationID          int    `json:"station_id" db:"station_id"`
+	OperatorID         string `json:"operator_id" db:"operator_id"`
+	LogDate            string `json:"log_date" db:"log_date"`
+	PumpMaintStatus    string `json:"pump_maint_status" db:"pump_maint_status"`
+	MotorServiceDone   string `json:"motor_service_done" db:"motor_service_done"`
+	ValveLubrication   string `json:"valve_lubrication" db:"valve_lubrication"`
+	PanelInspection    string `json:"panel_inspection" db:"panel_inspection"`
+	EmergencyPowerTest bool   `json:"emergency_power_test" db:"emergency_power_test"`
+	SandFilterStatus   string `json:"sand_filter_status" db:"sand_filter_status"`
+	CarbonFilterStatus string `json:"carbon_filter_status" db:"carbon_filter_status"`
+	Remark             string `json:"remark" db:"remark"`
+	PhotoURL           string `json:"photo_url" db:"photo_url"`
+}
+
+type STPYearlyLog struct {
+	ID                    int    `json:"id" db:"id"`
+	StationID             int    `json:"station_id" db:"station_id"`
+	OperatorID            string `json:"operator_id" db:"operator_id"`
+	LogDate               string `json:"log_date" db:"log_date"`
+	StructuralAudit       bool   `json:"structural_audit" db:"structural_audit"`
+	TankCleaning          bool   `json:"tank_cleaning" db:"tank_cleaning"`
+	SludgeUnitOverhaul    bool   `json:"sludge_unit_overhaul" db:"sludge_unit_overhaul"`
+	ElectricalSafetyAudit bool   `json:"electrical_safety_audit" db:"electrical_safety_audit"`
+	InstrumentCalibration string `json:"instrument_calibration" db:"instrument_calibration"`
+	GritChamberService    string `json:"grit_chamber_service" db:"grit_chamber_service"`
+	Remark                string `json:"remark" db:"remark"`
+	PhotoURL              string `json:"photo_url" db:"photo_url"`
+}
+

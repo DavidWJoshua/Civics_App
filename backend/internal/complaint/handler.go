@@ -10,9 +10,9 @@ import (
 	"strconv"
 	"time"
 
-	"civic-complaint-system/backend/config"
 	"civic-complaint-system/backend/internal/ml"
-	"civic-complaint-system/backend/pkg/spatial"
+
+	"civic-complaint-system/backend/config"
 
 	"github.com/gin-gonic/gin"
 )
@@ -51,12 +51,6 @@ func (h *Handler) RaiseComplaint(c *gin.Context) {
 	lng, _ := strconv.ParseFloat(lngStr, 64)
 	var locationMap map[string]interface{}
 	json.Unmarshal([]byte(locationStr), &locationMap)
-
-	// Determine ward dynamically using boundary data first
-	computedWard := spatial.GetWardFromPoint(lat, lng)
-	if computedWard != "" {
-		ward = computedWard
-	}
 
 	// 4. Handle Image Upload
 	var imageURL string
@@ -150,18 +144,6 @@ func (h *Handler) Predict(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, prediction)
-}
-
-func (h *Handler) GetWard(c *gin.Context) {
-	latStr := c.Query("lat")
-	lngStr := c.Query("lng")
-
-	lat, _ := strconv.ParseFloat(latStr, 64)
-	lng, _ := strconv.ParseFloat(lngStr, 64)
-
-	ward := spatial.GetWardFromPoint(lat, lng)
-
-	c.JSON(http.StatusOK, gin.H{"ward": ward})
 }
 
 func (h *Handler) GetComplaints(c *gin.Context) {

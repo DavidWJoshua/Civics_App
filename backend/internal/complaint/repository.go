@@ -3,9 +3,6 @@ package complaint
 import (
 	"context"
 	"encoding/json"
-	"fmt"
-	"math/rand"
-	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -28,16 +25,14 @@ func (r *Repository) CreateComplaintWithAssignmentTx(
 
 	locationJSON, _ := json.Marshal(req.Location)
 
-	// Generate ID: MM-DD-YYYY-XXXXXX
-	now := time.Now()
-	complaintID := fmt.Sprintf("%02d-%02d-%04d-%06d", now.Month(), now.Day(), now.Year(), rand.Intn(1000000))
+	var complaintID string
 
 	// 1️⃣ Insert Complaint
-	_, err = tx.Exec(ctx,
+	err = tx.QueryRow(ctx,
 		`INSERT INTO complaints
-		(id, citizen_id, category, severity, latitude, longitude, street, area, ward, city, location_json, image_url)
-		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
-		complaintID,
+		(citizen_id, category, severity, latitude, longitude, street, area, ward, city, location_json, image_url)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+		RETURNING id`,
 		citizenID,
 		req.Category,
 		req.Severity,
@@ -49,7 +44,7 @@ func (r *Repository) CreateComplaintWithAssignmentTx(
 		req.City,
 		locationJSON,
 		req.ImageURL,
-	)
+	).Scan(&complaintID)
 
 	if err != nil {
 		return "", err

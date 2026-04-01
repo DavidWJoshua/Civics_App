@@ -14,6 +14,7 @@ func RegisterRoutes(r *gin.RouterGroup, db *pgxpool.Pool) {
 	r.GET("/equipment", handler.GetEquipment)
 	r.GET("/faults", handler.GetFaults)
 	r.POST("/faults", handler.ReportFault)
+	r.GET("/task-status", handler.GetTaskStatus)
 
 	// Daily Logs
 	r.POST("/lifting/daily-log", handler.SubmitLiftingDailyLog)
@@ -30,6 +31,8 @@ func RegisterRoutes(r *gin.RouterGroup, db *pgxpool.Pool) {
 	r.POST("/pumping/yearly-log", handler.SubmitPumpingYearlyLog)
 
 	r.POST("/stp/maintenance-log", handler.SubmitSTPMaintenanceLog)
+	r.POST("/stp/monthly-log", handler.SubmitSTPMonthlyLog)
+	r.POST("/stp/yearly-log", handler.SubmitSTPYearlyLog)
 
 	// Profile
 	r.GET("/profile", handler.GetProfile)

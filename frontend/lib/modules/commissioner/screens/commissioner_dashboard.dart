@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../../../core/utils/token_storage.dart';
-import '../../../core/services/auth_service.dart';
 import '../services/commissioner_service.dart';
 import 'commissioner_budget_list.dart';
 import 'commissioner_escalation_list.dart';
@@ -40,7 +39,7 @@ class _CommissionerDashboardState extends State<CommissionerDashboard> {
   }
 
   Future<void> logout() async {
-    await AuthService.logout();
+    await TokenStorage.clear();
     if (mounted) {
       Navigator.of(context)
           .pushNamedAndRemoveUntil("/", (route) => false);
@@ -57,7 +56,7 @@ class _CommissionerDashboardState extends State<CommissionerDashboard> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Commissioner Dashboard"),
+        title: const Text("Health Inspector Dashboard"),
         actions: [
           IconButton(
             icon: const Icon(Icons.person),

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../../../../core/utils/token_storage.dart';
-import '../../../../core/services/auth_service.dart';
 import '../../citizen/screens/citizen_login_phone.dart';
 import '../services/officer_service.dart';
 import 'complaint_list.dart';
@@ -155,7 +154,7 @@ class _OfficerDashboardState extends State<OfficerDashboard> {
           IconButton(
             icon: const Icon(Icons.logout, color: Colors.white),
             onPressed: () async {
-              await AuthService.logout();
+              await TokenStorage.clear();
               if (context.mounted) {
                 Navigator.pushAndRemoveUntil(
                   context,
@@ -382,7 +381,7 @@ class _OfficerDashboardState extends State<OfficerDashboard> {
             mainAxisSize: MainAxisSize.min,
             children: [
               const Text(
-                "Your application will be sent to the Junior Engineer for approval. You will remain active until approved.",
+                "Your application will be sent to the Sanitary Inspector for approval. You will remain active until approved.",
                 style: TextStyle(color: Colors.grey, fontSize: 13),
               ),
               const SizedBox(height: 16),

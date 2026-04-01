@@ -15,7 +15,6 @@ class Station {
     );
   }
 }
-
 class Equipment {
   final int id;
   final int stationId;

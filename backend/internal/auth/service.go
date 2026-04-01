@@ -77,10 +77,7 @@ func (s *Service) VerifyOTPAndLogin(
 	if role != "" {
 		userID, err := citizenRepo.GetUserByPhoneAndRole(ctx, phone, role)
 		if err == nil && userID != "" {
-			token, jti, err := utils.GenerateJWT(userID, role)
-			if err == nil {
-				s.Repo.CreateSession(ctx, jti, userID, role, time.Now().Add(24*time.Hour))
-			}
+			token, err := utils.GenerateJWT(userID, role)
 			return token, role, err
 		}
 
@@ -90,10 +87,7 @@ func (s *Service) VerifyOTPAndLogin(
 			if err != nil {
 				return "", "", err
 			}
-			token, jti, err := utils.GenerateJWT(userID, "CITIZEN")
-			if err == nil {
-				s.Repo.CreateSession(ctx, jti, userID, "CITIZEN", time.Now().Add(24*time.Hour))
-			}
+			token, err := utils.GenerateJWT(userID, "CITIZEN")
 			return token, "CITIZEN", err
 		}
 
@@ -105,10 +99,7 @@ func (s *Service) VerifyOTPAndLogin(
 	// 2. Fallback (Legacy): Get any user by phone
 	userID, roleName, err := s.Repo.GetUserByPhone(ctx, phone)
 	if err == nil {
-		token, jti, err := utils.GenerateJWT(userID, roleName)
-		if err == nil {
-			s.Repo.CreateSession(ctx, jti, userID, roleName, time.Now().Add(24*time.Hour))
-		}
+		token, err := utils.GenerateJWT(userID, roleName)
 		return token, roleName, err
 	}
 
@@ -118,9 +109,6 @@ func (s *Service) VerifyOTPAndLogin(
 		return "", "", err
 	}
 
-	token, jti, err := utils.GenerateJWT(userID, "CITIZEN")
-	if err == nil {
-		s.Repo.CreateSession(ctx, jti, userID, "CITIZEN", time.Now().Add(24*time.Hour))
-	}
+	token, err := utils.GenerateJWT(userID, "CITIZEN")
 	return token, "CITIZEN", err
 }

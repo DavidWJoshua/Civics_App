@@ -3,7 +3,6 @@ package main
 import (
 	"log"
 	"os"
-	"path/filepath"
 
 	"civic-complaint-system/backend/config"
 	"civic-complaint-system/backend/internal/analytics"
@@ -20,7 +19,6 @@ import (
 	"civic-complaint-system/backend/internal/ml"
 	"civic-complaint-system/backend/internal/operator"
 	"civic-complaint-system/backend/internal/scheduler"
-	"civic-complaint-system/backend/pkg/spatial"
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
@@ -50,29 +48,6 @@ func main() {
 		log.Fatal("❌ DB connection failed:", err)
 	}
 	log.Println("✅ PostgreSQL connected successfully")
-
-	// Bulletproof spatial wards path resolution
-	cwd, _ := os.Getwd()
-	wardPathFound := ""
-	for _, p := range []string{
-		filepath.Join(cwd, "resources", "wards.json"),
-		filepath.Join(cwd, "..", "..", "resources", "wards.json"),
-		filepath.Join(cwd, "..", "resources", "wards.json"),
-		"C:\\Users\\david\\Downloads\\Civics_App-main\\Civics_App-main\\backend\\resources\\wards.json",
-	} {
-		if _, err := os.Stat(p); err == nil {
-			wardPathFound = p
-			break
-		}
-	}
-	
-	if wardPathFound == "" {
-		log.Println("⚠️ Could not locate wards.json in any expected path relative to", cwd)
-	} else if err := spatial.LoadWards(wardPathFound); err != nil {
-		log.Println("⚠️ Failed to parse spatial wards.json from", wardPathFound, "error:", err)
-	} else {
-		log.Println("✅ Loaded spatial wards from", wardPathFound)
-	}
 
 	// ===========================
 	// START SLA AUTO ESCALATION CRON
@@ -133,61 +108,59 @@ func main() {
 	authRoutes := api.Group("/auth")
 	auth.RegisterRoutes(authRoutes, authHandler)
 	authRoutes.POST("/citizen/verify-otp", authHandler.VerifyOTP)
-	authRoutes.POST("/logout", middleware.JWTAuthMiddleware(pg), authHandler.Logout)
 
 	// ===========================
 	// CITIZEN ROUTES
 	// ===========================
 	citizenRoutes := api.Group("/citizen")
-	citizenRoutes.Use(middleware.JWTAuthMiddleware(pg))
+	citizenRoutes.Use(middleware.JWTAuthMiddleware())
 
 	citizenRoutes.GET("/home", citizenHandler.CitizenHome)
 	citizenRoutes.POST("/complaints", complaintHandler.RaiseComplaint)
 	citizenRoutes.GET("/complaints", complaintHandler.GetComplaints)
 	citizenRoutes.POST("/complaints/:id/feedback", complaintHandler.SubmitFeedback)
 	citizenRoutes.POST("/predict", complaintHandler.Predict)
-	citizenRoutes.GET("/ward", complaintHandler.GetWard)
 
 	// ===========================
 	// FIELD OFFICER ROUTES
 	// ===========================
 	officerRoutes := api.Group("/field-officer")
-	officerRoutes.Use(middleware.JWTAuthMiddleware(pg))
+	officerRoutes.Use(middleware.JWTAuthMiddleware())
 	field_officer.RegisterRoutes(officerRoutes, pg)
 
 	// ===========================
 	// JUNIOR ENGINEER ROUTES
 	// ===========================
 	jeRoutes := api.Group("/junior-engineer")
-	jeRoutes.Use(middleware.JWTAuthMiddleware(pg))
+	jeRoutes.Use(middleware.JWTAuthMiddleware())
 	junior_engineer.RegisterRoutes(jeRoutes, pg)
 
 	// ===========================
 	// COMMISSIONER ROUTES
 	// ===========================
 	commissionerRoutes := api.Group("/commissioner")
-	commissionerRoutes.Use(middleware.JWTAuthMiddleware(pg))
+	commissionerRoutes.Use(middleware.JWTAuthMiddleware())
 	commissioner.RegisterRoutes(commissionerRoutes, pg)
 
 	// ===========================
 	// OPERATOR ROUTES
 	// ===========================
 	operatorRoutes := api.Group("/operator")
-	operatorRoutes.Use(middleware.JWTAuthMiddleware(pg))
+	operatorRoutes.Use(middleware.JWTAuthMiddleware())
 	operator.RegisterRoutes(operatorRoutes, pg)
 
 	// ===========================
 	// ANALYTICS ROUTES (ADMIN)
 	// ===========================
 	adminRoutes := api.Group("/admin")
-	adminRoutes.Use(middleware.JWTAuthMiddleware(pg))
+	adminRoutes.Use(middleware.JWTAuthMiddleware())
 	analytics.RegisterRoutes(adminRoutes, pg)
 
 	// ===========================
 	// LEAVE MANAGEMENT ROUTES
 	// ===========================
 	leaveRoutes := api.Group("/leave-management")
-	leaveRoutes.Use(middleware.JWTAuthMiddleware(pg))
+	leaveRoutes.Use(middleware.JWTAuthMiddleware())
 	leave_management.RegisterRoutes(leaveRoutes, pg)
 
 	log.Println("🚀 Server running on http://localhost:8080")

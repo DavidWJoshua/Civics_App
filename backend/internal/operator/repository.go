@@ -2,9 +2,11 @@ package operator
 
 import (
 	"context"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
+
 
 type Repository struct {
 	DB *pgxpool.Pool
@@ -145,3 +147,89 @@ func (r *Repository) CreateSTPMaintenanceLog(ctx context.Context, log *STPMainte
 	VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`
 	return r.DB.QueryRow(ctx, query, log.StationID, log.OperatorID, log.LogDate, log.Type, log.BlowerMaintDone, log.DiffuserCleaningDone, log.ClarifierCheck, log.LabCalibrated, log.AnalyzerStatus).Scan(&log.ID)
 }
+
+func (r *Repository) CreateSTPMonthlyLog(ctx context.Context, log *STPMonthlyLog) error {
+	query := `INSERT INTO stp_monthly_logs (station_id, operator_id, log_date, pump_maint_status, motor_service_done, valve_lubrication, panel_inspection, emergency_power_test, sand_filter_status, carbon_filter_status, remark, photo_url) 
+	VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING id`
+	return r.DB.QueryRow(ctx, query, log.StationID, log.OperatorID, log.LogDate, log.PumpMaintStatus, log.MotorServiceDone, log.ValveLubrication, log.PanelInspection, log.EmergencyPowerTest, log.SandFilterStatus, log.CarbonFilterStatus, log.Remark, log.PhotoURL).Scan(&log.ID)
+}
+
+func (r *Repository) CreateSTPYearlyLog(ctx context.Context, log *STPYearlyLog) error {
+	query := `INSERT INTO stp_yearly_logs (station_id, operator_id, log_date, structural_audit, tank_cleaning, sludge_unit_overhaul, electrical_safety_audit, instrument_calibration, grit_chamber_service, remark, photo_url) 
+	VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id`
+	return r.DB.QueryRow(ctx, query, log.StationID, log.OperatorID, log.LogDate, log.StructuralAudit, log.TankCleaning, log.SludgeUnitOverhaul, log.ElectricalSafetyAudit, log.InstrumentCalibration, log.GritChamberService, log.Remark, log.PhotoURL).Scan(&log.ID)
+}
+
+// TaskStatus holds completion status for each frequency
+type TaskStatus struct {
+	Daily   bool `json:"daily"`
+	Weekly  bool `json:"weekly"`
+	Monthly bool `json:"monthly"`
+	Yearly  bool `json:"yearly"`
+}
+
+func (r *Repository) GetTaskStatus(ctx context.Context, stationID int, stationType string) (*TaskStatus, error) {
+	today := time.Now().Format("2006-01-02")
+	status := &TaskStatus{}
+
+	switch stationType {
+	case "lifting":
+		// Daily: check lifting_daily_logs
+		var dailyCount int
+		r.DB.QueryRow(ctx, `SELECT COUNT(*) FROM lifting_daily_logs WHERE station_id=$1 AND log_date=$2`, stationID, today).Scan(&dailyCount)
+		status.Daily = dailyCount > 0
+
+		// Weekly: check lifting_weekly_logs — this week
+		var weeklyCount int
+		r.DB.QueryRow(ctx, `SELECT COUNT(*) FROM lifting_weekly_logs WHERE equipment_id IN (SELECT id FROM equipment WHERE station_id=$1) AND log_date >= date_trunc('week', CURRENT_DATE)`, stationID).Scan(&weeklyCount)
+		status.Weekly = weeklyCount > 0
+
+		// Monthly
+		var monthlyCount int
+		r.DB.QueryRow(ctx, `SELECT COUNT(*) FROM lifting_monthly_logs WHERE equipment_id IN (SELECT id FROM equipment WHERE station_id=$1) AND log_date >= date_trunc('month', CURRENT_DATE)`, stationID).Scan(&monthlyCount)
+		status.Monthly = monthlyCount > 0
+
+		// Yearly
+		var yearlyCount int
+		r.DB.QueryRow(ctx, `SELECT COUNT(*) FROM lifting_yearly_logs WHERE equipment_id IN (SELECT id FROM equipment WHERE station_id=$1) AND log_date >= date_trunc('year', CURRENT_DATE)`, stationID).Scan(&yearlyCount)
+		status.Yearly = yearlyCount > 0
+
+	case "pumping":
+		var dailyCount int
+		r.DB.QueryRow(ctx, `SELECT COUNT(*) FROM pumping_daily_logs WHERE station_id=$1 AND log_date=$2`, stationID, today).Scan(&dailyCount)
+		status.Daily = dailyCount > 0
+
+		var weeklyCount int
+		r.DB.QueryRow(ctx, `SELECT COUNT(*) FROM pumping_weekly_logs WHERE station_id=$1 AND log_date >= date_trunc('week', CURRENT_DATE)`, stationID).Scan(&weeklyCount)
+		status.Weekly = weeklyCount > 0
+
+		var monthlyCount int
+		r.DB.QueryRow(ctx, `SELECT COUNT(*) FROM pumping_monthly_logs WHERE equipment_id IN (SELECT id FROM equipment WHERE station_id=$1) AND log_date >= date_trunc('month', CURRENT_DATE)`, stationID).Scan(&monthlyCount)
+		status.Monthly = monthlyCount > 0
+
+		var yearlyCount int
+		r.DB.QueryRow(ctx, `SELECT COUNT(*) FROM pumping_yearly_logs WHERE equipment_id IN (SELECT id FROM equipment WHERE station_id=$1) AND log_date >= date_trunc('year', CURRENT_DATE)`, stationID).Scan(&yearlyCount)
+		status.Yearly = yearlyCount > 0
+
+	case "stp":
+		var dailyCount int
+		r.DB.QueryRow(ctx, `SELECT COUNT(*) FROM stp_daily_logs WHERE station_id=$1 AND log_date=$2`, stationID, today).Scan(&dailyCount)
+		status.Daily = dailyCount > 0
+
+		var weeklyCount int
+		r.DB.QueryRow(ctx, `SELECT COUNT(*) FROM stp_maintenance_logs WHERE station_id=$1 AND type='weekly' AND log_date >= date_trunc('week', CURRENT_DATE)`, stationID).Scan(&weeklyCount)
+		status.Weekly = weeklyCount > 0
+
+		var monthlyCount int
+		r.DB.QueryRow(ctx, `SELECT COUNT(*) FROM stp_monthly_logs WHERE station_id=$1 AND log_date >= date_trunc('month', CURRENT_DATE)`, stationID).Scan(&monthlyCount)
+		status.Monthly = monthlyCount > 0
+
+		var yearlyCount int
+		r.DB.QueryRow(ctx, `SELECT COUNT(*) FROM stp_yearly_logs WHERE station_id=$1 AND log_date >= date_trunc('year', CURRENT_DATE)`, stationID).Scan(&yearlyCount)
+		status.Yearly = yearlyCount > 0
+	}
+
+	return status, nil
+}
+
+

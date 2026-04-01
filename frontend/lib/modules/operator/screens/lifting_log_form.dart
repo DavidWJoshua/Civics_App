@@ -3,7 +3,6 @@ import '../../../core/utils/token_storage.dart';
 import '../../citizen/screens/citizen_login_phone.dart';
 import '../models/operator_models.dart';
 import '../services/operator_service.dart';
-import 'form_helpers.dart';
 import '../../../core/theme/app_colors.dart';
 
 class LiftingLogForm extends StatefulWidget {
@@ -16,35 +15,39 @@ class LiftingLogForm extends StatefulWidget {
   State<LiftingLogForm> createState() => _LiftingLogFormState();
 }
 
-class _LiftingLogFormState extends State<LiftingLogForm> with FormHelpers {
+class _LiftingLogFormState extends State<LiftingLogForm> {
   final _formKey = GlobalKey<FormState>();
-  bool loading = false;
+  final Map<String, dynamic> _data = {};
+  bool _loading = false;
 
   Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) return;
-    
-    setState(() => loading = true);
-    
+    if (!_formKey.currentState!.validate()) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Please fill all required fields"), backgroundColor: Colors.red),
+      );
+      return;
+    }
+    _formKey.currentState!.save();
+    _data['station_id'] = widget.station.id;
+    _data['log_date'] = DateTime.now().toIso8601String().split('T')[0];
+
+    setState(() => _loading = true);
     try {
-      // Add standard fields
-      formData['station_id'] = widget.station.id;
-      formData['log_date'] = DateTime.now().toString().split(' ')[0];
-      
-      await OperatorService.submitLiftingLog(formData, widget.frequency);
-      
+      await OperatorService.submitLiftingLog(_data, widget.frequency);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Log Submitted Successfully")));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Log Submitted Successfully"), backgroundColor: Colors.green));
       Navigator.pop(context);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e"), backgroundColor: Colors.red));
     } finally {
-      if (mounted) setState(() => loading = false);
+      if (mounted) setState(() => _loading = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final freq = widget.frequency.trim().toLowerCase();
     return Scaffold(
       appBar: AppBar(
         title: Text("${widget.station.name} - ${widget.frequency} Log"),
@@ -54,11 +57,7 @@ class _LiftingLogFormState extends State<LiftingLogForm> with FormHelpers {
             onPressed: () async {
               await TokenStorage.clear();
               if (context.mounted) {
-                Navigator.pushAndRemoveUntil(
-                  context,
-                  MaterialPageRoute(builder: (_) => const CitizenLoginPhone()),
-                  (route) => false,
-                );
+                Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (_) => const CitizenLoginPhone()), (r) => false);
               }
             },
           ),
@@ -66,90 +65,200 @@ class _LiftingLogFormState extends State<LiftingLogForm> with FormHelpers {
       ),
       body: Form(
         key: _formKey,
-        child: ListView(
+        child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-          children: [
-            if (widget.frequency == 'Daily') ...[
-               buildDropdown("Shift Type", "shift_type", ["Day", "Night"]),
-               buildTextField("Equipment ID (Optional)", "equipment_id", isNumber: true, isInt: true),
-               
-               buildDropdown("Pump Running Status", "pump_status", ["Running", "Stopped"]),
-               buildTextField("Pump Hours Reading", "hours_reading", isNumber: true),
-               buildTextField("Voltage Reading (V)", "voltage", isNumber: true),
-               buildTextField("Current Reading (A)", "current_reading", isNumber: true),
-               buildDropdown("Sump Level Status", "sump_level_status", ["Normal", "High", "Low", "Critical"]),
-               buildDropdown("Panel Indicator Status", "panel_status", ["OK", "Fault", "Trip"]),
-               
-               buildSectionHeader("Checks & Flags"),
-               buildSwitch("Vibration Abnormal?", "vibration_issue"),
-               buildSwitch("Noise Abnormal?", "noise_issue"),
-               buildSwitch("Leakage Detected?", "leakage_issue"),
-               buildSwitch("Cleaning Done?", "cleaning_done"),
-
-               buildSectionHeader("Remarks & Evidence"),
-               buildTextField("Daily Remark", "remark"),
-               buildImagePicker("Photo Evidence", "photo_url"),
-             ],
-
-             if (widget.frequency == 'Weekly') ...[
-               buildTextField("Equipment ID (Optional)", "equipment_id", isNumber: true, isInt: true),
-               
-               buildSwitch("Lubrication Done?", "lubrication_done"),
-               buildDropdown("Belt Coupling Check", "belt_coupling_status", ["OK", "Not OK"]),
-               buildDropdown("Valve Operation Status", "valve_status", ["Smooth", "Jam"]),
-               buildSwitch("Control Panel Cleaned?", "panel_cleaned"),
-               buildDropdown("Earthing Check Status", "earthing_status", ["OK", "Issue"]),
-               buildSwitch("Standby Pump Tested?", "standby_tested"),
-               buildSwitch("Minor Fault Observed?", "minor_fault_found"),
-
-               buildSectionHeader("Remarks & Evidence"),
-               buildTextField("Weekly Remark", "remark"),
-               buildImagePicker("Photo Evidence", "photo_url"),
-             ],
-
-             if (widget.frequency == 'Monthly') ...[
-               buildTextField("Equipment ID (Optional)", "equipment_id", isNumber: true, isInt: true),
-
-               buildDropdown("Motor Insulation Test", "insulation_status", ["Pass", "Fail"]),
-               buildDropdown("Bearing Condition", "bearing_condition", ["Good", "Worn"]),
-               buildDropdown("Alignment Check Status", "alignment_status", ["OK", "Misaligned"]),
-               buildDropdown("Foundation Bolt Check", "bolt_status", ["Tight", "Loose"]),
-               buildDropdown("Starter Panel Test", "starter_status", ["Normal", "Fault"]),
-               buildSwitch("Load Test Conducted?", "load_test_done"),
-               buildTextField("Energy Consumption (kWh)", "energy_consumption", isNumber: true),
-               buildTextField("Remark", "remark"),
-             ],
-
-             if (widget.frequency == 'Yearly') ...[
-               buildTextField("Equipment ID (Optional)", "equipment_id", isNumber: true, isInt: true),
-
-               buildSwitch("Pump Overhaul Done?", "pump_overhaul_done"),
-               buildSwitch("Motor Rewinding Done?", "motor_rewinding_done"),
-               buildDropdown("Impeller Condition", "impeller_condition", ["Good", "Replaced"]),
-               buildSwitch("Seal Gasket Replaced?", "seal_replaced"),
-               buildSwitch("Electrical Calibration Done?", "calibration_done"),
-               buildDropdown("Capacity Test Result", "capacity_test_result", ["Pass", "Fail"]),
-               buildSwitch("Safety Audit Done?", "safety_audit_done"),
-               buildSwitch("Third Party Inspection Done?", "inspection_done"),
-               buildImagePicker("Certificate/Report Photo", "report_url"),
-               buildTextField("Remark", "remark"),
-             ],
-
-             const SizedBox(height: 20),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary, 
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              ..._buildFields(freq),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                height: 52,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  onPressed: _loading ? null : _submit,
+                  child: _loading
+                      ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                      : const Text("SUBMIT LOG", style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
                 ),
-               onPressed: loading ? null : _submit,
-               child: loading 
-                  ? const CircularProgressIndicator(color: Colors.white) 
-                  : const Text("SUBMIT LOG", style: TextStyle(color: Colors.white, fontSize: 16)),
-             )
-          ],
+              ),
+              const SizedBox(height: 30),
+            ],
+          ),
         ),
       ),
     );
   }
+
+  List<Widget> _buildFields(String freq) {
+    switch (freq) {
+      case 'daily':
+        return [
+          _dropdown("Shift Type", "shift_type", ["Day", "Night"], required: true),
+          _text("Equipment ID (Optional)", "equipment_id", isNumber: true, isInt: true),
+          _dropdown("Pump Running Status", "pump_status", ["Running", "Stopped"], required: true),
+          _text("Pump Hours Reading", "hours_reading", isNumber: true),
+          _text("Voltage Reading (V)", "voltage", isNumber: true),
+          _text("Current Reading (A)", "current_reading", isNumber: true),
+          _dropdown("Sump Level Status", "sump_level_status", ["Normal", "High", "Low", "Critical"], required: true),
+          _dropdown("Panel Indicator Status", "panel_status", ["OK", "Fault", "Trip"], required: true),
+          _section("Checks & Flags"),
+          _switch("Vibration Abnormal?", "vibration_issue"),
+          _switch("Noise Abnormal?", "noise_issue"),
+          _switch("Leakage Detected?", "leakage_issue"),
+          _switch("Cleaning Done?", "cleaning_done"),
+          _section("Remarks & Evidence"),
+          _text("Daily Remark", "remark"),
+          _imagePicker("Photo Evidence", "photo_url"),
+        ];
+      case 'weekly':
+        return [
+          _text("Equipment ID", "equipment_id", isNumber: true, isInt: true, required: true),
+          _switch("Lubrication Done?", "lubrication_done"),
+          _dropdown("Belt Coupling Check", "belt_check_status", ["OK", "Not OK"], required: true),
+          _dropdown("Valve Operation Status", "valve_status", ["Smooth", "Jam"], required: true),
+          _switch("Control Panel Cleaned?", "panel_cleaned"),
+          _dropdown("Earthing Check Status", "earthing_status", ["OK", "Issue"], required: true),
+          _switch("Standby Pump Tested?", "standby_pump_test"),
+          _switch("Minor Fault Observed?", "minor_fault"),
+          _section("Remarks & Evidence"),
+          _text("Weekly Remark", "remark"),
+          _imagePicker("Photo Evidence", "photo_url"),
+        ];
+      case 'monthly':
+        return [
+          _text("Equipment ID", "equipment_id", isNumber: true, isInt: true, required: true),
+          _dropdown("Motor Insulation Test", "insulation_test_status", ["Pass", "Fail"], required: true),
+          _dropdown("Bearing Condition", "bearing_condition", ["Good", "Worn"], required: true),
+          _dropdown("Alignment Check Status", "alignment_status", ["OK", "Misaligned"], required: true),
+          _dropdown("Foundation Bolt Check", "foundation_bolt_status", ["Tight", "Loose"], required: true),
+          _dropdown("Starter Panel Test", "starter_panel_status", ["Normal", "Fault"], required: true),
+          _switch("Load Test Conducted?", "load_test_done"),
+          _text("Energy Consumption (kWh)", "energy_consumption", isNumber: true),
+          _section("Remarks"),
+          _text("Monthly Remark", "remark"),
+          _imagePicker("Photo Evidence", "photo_url"),
+        ];
+      case 'yearly':
+        return [
+          _text("Equipment ID", "equipment_id", isNumber: true, isInt: true, required: true),
+          _switch("Pump Overhaul Done?", "overhaul_done"),
+          _switch("Motor Rewinding Done?", "rewinding_done"),
+          _dropdown("Impeller Condition", "impeller_condition", ["Good", "Replaced"], required: true),
+          _switch("Seal Gasket Replaced?", "seal_replaced"),
+          _switch("Electrical Calibration Done?", "calibration_done"),
+          _dropdown("Capacity Test Result", "capacity_test_result", ["Pass", "Fail"], required: true),
+          _switch("Safety Audit Done?", "safety_audit_done"),
+          _switch("Third Party Inspection Done?", "third_party_inspection"),
+          _section("Remarks"),
+          _imagePicker("Certificate/Report Photo", "certificate_url"),
+          _text("Yearly Remark", "remark"),
+        ];
+      default:
+        return [
+          Center(child: Text("Unknown frequency: ${widget.frequency}", style: const TextStyle(color: Colors.red))),
+        ];
+    }
+  }
+
+  Widget _section(String title) => Padding(
+        padding: const EdgeInsets.only(top: 16, bottom: 8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(title, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: AppColors.primary)),
+            const Divider(thickness: 1.5, color: AppColors.primary),
+          ],
+        ),
+      );
+
+  Widget _text(String label, String key, {bool isNumber = false, bool isInt = false, bool required = false}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: TextFormField(
+        decoration: _inputDec(required ? "$label *" : label),
+        keyboardType: isNumber ? const TextInputType.numberWithOptions(decimal: true) : TextInputType.text,
+        onSaved: (val) {
+          if (val == null || val.isEmpty) return;
+          if (isNumber) {
+            _data[key] = isInt ? (int.tryParse(val) ?? 0) : (double.tryParse(val) ?? 0.0);
+          } else {
+            _data[key] = val;
+          }
+        },
+        validator: (val) {
+          if (required && (val == null || val.trim().isEmpty)) return "$label is required";
+          if (isNumber && val != null && val.isNotEmpty) {
+            if (isInt && int.tryParse(val) == null) return "Enter valid integer";
+            if (!isInt && double.tryParse(val) == null) return "Enter valid number";
+          }
+          return null;
+        },
+      ),
+    );
+  }
+
+  Widget _dropdown(String label, String key, List<String> items, {bool required = false}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: DropdownButtonFormField<String>(
+        decoration: _inputDec(label),
+        hint: const Text("Select...", style: TextStyle(color: Colors.grey)),
+        items: items.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+        onChanged: (val) => _data[key] = val,
+        onSaved: (val) { if (val != null) _data[key] = val; },
+        validator: required ? (val) => val == null ? "Please select $label" : null : null,
+      ),
+    );
+  }
+
+  Widget _switch(String label, String key) {
+    _data.putIfAbsent(key, () => false);
+    return StatefulBuilder(
+      builder: (context, setSwitchState) => SwitchListTile(
+        title: Text(label),
+        value: _data[key] as bool,
+        activeColor: AppColors.primary,
+        contentPadding: EdgeInsets.zero,
+        onChanged: (val) {
+          setSwitchState(() => _data[key] = val);
+        },
+      ),
+    );
+  }
+
+  Widget _imagePicker(String label, String key) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+            onPressed: () {},
+            icon: const Icon(Icons.camera_alt),
+            label: Text(_data[key] != null ? "Retake Photo" : "Take Photo"),
+            style: OutlinedButton.styleFrom(foregroundColor: AppColors.primary),
+          ),
+        ],
+      ),
+    );
+  }
+
+  InputDecoration _inputDec(String label) => InputDecoration(
+        labelText: label,
+        filled: true,
+        fillColor: Colors.grey[50],
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey[300]!)),
+        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.primary, width: 2)),
+        errorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Colors.red)),
+        focusedErrorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Colors.red, width: 2)),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      );
 }

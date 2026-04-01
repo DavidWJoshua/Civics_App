@@ -69,21 +69,3 @@ func (h *Handler) VerifyOTP(c *gin.Context) {
 		"role":  roleName,
 	})
 }
-
-/* ---------- LOGOUT ---------- */
-
-func (h *Handler) Logout(c *gin.Context) {
-	jti, exists := c.Get("jti")
-	if !exists {
-		c.JSON(http.StatusOK, gin.H{"message": "already logged out (stateless)"})
-		return
-	}
-
-	err := h.Service.Repo.InvalidateSession(c.Request.Context(), jti.(string))
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to logout session"})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"message": "logged out successfully"})
-}

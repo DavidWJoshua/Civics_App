@@ -102,18 +102,3 @@ func (r *Repository) GetUserByPhone(ctx context.Context, phone string) (string, 
 
 	return userID, role, nil
 }
-
-func (r *Repository) CreateSession(ctx context.Context, jti, userID, role string, expiresAt time.Time) error {
-	_, err := r.DB.Exec(ctx, `
-		INSERT INTO user_sessions (jti, user_id, role, expires_at)
-		VALUES ($1, $2, $3, $4)
-	`, jti, userID, role, expiresAt)
-	return err
-}
-
-func (r *Repository) InvalidateSession(ctx context.Context, jti string) error {
-	_, err := r.DB.Exec(ctx, `
-		DELETE FROM user_sessions WHERE jti = $1
-	`, jti)
-	return err
-}

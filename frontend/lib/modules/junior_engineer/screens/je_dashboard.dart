@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../../../core/utils/token_storage.dart';
-import '../../../core/services/auth_service.dart';
 import '../../citizen/screens/citizen_login_phone.dart';
 import '../services/je_service.dart';
 import 'je_budget_list.dart';
@@ -54,7 +53,7 @@ class _JEDashboardState extends State<JEDashboard> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Junior Engineer"),
+        title: const Text("Sanitary Inspector"),
         actions: [
           IconButton(
             icon: const Icon(Icons.person),
@@ -86,7 +85,7 @@ class _JEDashboardState extends State<JEDashboard> {
           IconButton(
             icon: const Icon(Icons.logout),
             onPressed: () async {
-              await AuthService.logout();
+              await TokenStorage.clear();
               if (context.mounted) {
                 Navigator.pushAndRemoveUntil(
                   context,
