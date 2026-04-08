@@ -1,32 +1,22 @@
-import 'package:shared_preferences/shared_preferences.dart';
+import 'secure_token_storage.dart';
 
+/// TokenStorage — kept for backward compatibility.
+/// All methods now delegate to SecureTokenStorage (flutter_secure_storage).
+/// New code should use SecureTokenStorage directly.
+@Deprecated('Use SecureTokenStorage instead for new code')
 class TokenStorage {
-  static const String _tokenKey = "auth_token";
-  static const String _roleKey = "user_role";
+  static Future<void> saveToken(String token) async =>
+      SecureTokenStorage.saveAccessToken(token);
 
-  static Future<void> saveToken(String token) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_tokenKey, token);
-  }
+  static Future<String?> getToken() async =>
+      SecureTokenStorage.getAccessToken();
 
-  static Future<String?> getToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_tokenKey);
-  }
+  static Future<void> saveRole(String role) async =>
+      SecureTokenStorage.saveRole(role);
 
-  static Future<void> saveRole(String role) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_roleKey, role);
-  }
+  static Future<String?> getRole() async =>
+      SecureTokenStorage.getRole();
 
-  static Future<String?> getRole() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_roleKey);
-  }
-
-  // ✅ THIS FIXES YOUR ERROR
-  static Future<void> clear() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.clear();
-  }
+  static Future<void> clear() async =>
+      SecureTokenStorage.clear();
 }

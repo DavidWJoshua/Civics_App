@@ -1,3 +1,4 @@
 class ApiConstants {
-  static const String baseUrl = "http://192.168.0.21:8080";
+  // Update this to your AWS Endpoint (e.g., http://my-alb-123.us-east-1.elb.amazonaws.com)
+  static const String baseUrl = "https://your-api-endpoint.com";
 }

@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'modules/citizen/screens/citizen_login_phone.dart';
 import 'modules/citizen/screens/citizen_home.dart';
 import 'modules/field_officer/screens/officer_dashboard.dart';
-import 'core/utils/token_storage.dart';
+import 'core/utils/secure_token_storage.dart';
+import 'core/services/api_client.dart';
+import 'core/utils/mobile_security.dart';
 
 import 'core/theme/app_colors.dart';
 
@@ -22,15 +25,55 @@ class _CivicAppState extends State<CivicApp> {
   String? _token;
   String? _role;
 
+  final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
+
   @override
   void initState() {
     super.initState();
     _checkLoginStatus();
+    // Listen for session expiry (token refresh failed) → redirect to login
+    SessionEvents.addListener(_onSessionExpired);
+  }
+
+  @override
+  void dispose() {
+    SessionEvents.removeListener(_onSessionExpired);
+    super.dispose();
+  }
+
+  void _onSessionExpired() {
+    // Navigate to login and show message
+    _navigatorKey.currentState?.pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const CitizenLoginPhone()),
+      (_) => false,
+    );
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      final ctx = _navigatorKey.currentContext;
+      if (ctx != null) {
+        ScaffoldMessenger.of(ctx).showSnackBar(
+          const SnackBar(
+            content: Text('Your session has expired. Please log in again.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    });
   }
 
   Future<void> _checkLoginStatus() async {
-    final token = await TokenStorage.getToken();
-    final role = await TokenStorage.getRole();
+    // 1. SECURE SCREEN (Android prevent screenshots/recording)
+    await MobileSecurity.secureScreen();
+
+    // 2. CHECK DEVICE INTEGRITY
+    final isCompromised = await MobileSecurity.isDeviceCompromised();
+    if (isCompromised) {
+      debugPrint("🚨 Warning: Device may be rooted/jailbroken.");
+      // You could stop the app here:
+      // return;
+    }
+
+    final token = await SecureTokenStorage.getAccessToken();
+    final role = await SecureTokenStorage.getRole();
     setState(() {
       _token = token;
       _role = role;
@@ -50,6 +93,7 @@ class _CivicAppState extends State<CivicApp> {
     }
 
     return MaterialApp(
+      navigatorKey: _navigatorKey,
       debugShowCheckedModeBanner: false,
       title: 'Civic Complaint System',
       theme: ThemeData(

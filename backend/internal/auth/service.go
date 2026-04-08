@@ -2,11 +2,11 @@ package auth
 
 import (
 	"context"
+	"crypto/rand"
 	"errors"
 	"fmt"
 	"log"
-	"math/rand"
-	"time"
+	"math/big"
 
 	"civic-complaint-system/backend/internal/common/crypto"
 	"civic-complaint-system/backend/internal/common/utils"
@@ -17,18 +17,31 @@ type Service struct {
 	SNS  SNSSender
 }
 
-/* ---------- OTP GENERATOR ---------- */
+/* ---------- CRYPTO-SAFE OTP GENERATOR ---------- */
 
-func generateOTP() string {
-	rand.Seed(time.Now().UnixNano())
-	return fmt.Sprintf("%06d", rand.Intn(1000000))
+func generateOTP() (string, error) {
+	// Use crypto/rand for cryptographically secure OTP
+	max := big.NewInt(1000000)
+	n, err := rand.Int(rand.Reader, max)
+	if err != nil {
+		return "", fmt.Errorf("failed to generate secure OTP: %w", err)
+	}
+	return fmt.Sprintf("%06d", n.Int64()), nil
 }
 
 /* ---------- SEND OTP ---------- */
 
 func (s *Service) SendOTP(ctx context.Context, phone string) (bool, error) {
-	otp := generateOTP()
-	log.Println("OTP GENERATED:", otp)
+	// Check if account is locked out (too many failed attempts)
+	if s.Repo.IsLockedOut(ctx, phone) {
+		return false, errors.New("account temporarily locked due to too many failed attempts")
+	}
+
+	otp, err := generateOTP()
+	if err != nil {
+		return false, err
+	}
+	log.Println("OTP GENERATED:", otp) // Remove in production — for dev only
 
 	hash, err := crypto.HashOTP(otp)
 	if err != nil {
@@ -40,7 +53,7 @@ func (s *Service) SendOTP(ctx context.Context, phone string) (bool, error) {
 		return false, err
 	}
 
-	message := "Your OTP for Civic Complaint System is: " + otp
+	message := "Your OTP for Civic Complaint System is: " + otp + ". Valid for 5 minutes. Do not share this code."
 	if err := s.SNS.SendSMS(phone, message); err != nil {
 		log.Println("❌ SNS SEND ERROR:", err)
 		return false, err
@@ -60,55 +73,117 @@ func (s *Service) VerifyOTPAndLogin(
 	code string,
 	role string,
 	citizenRepo CitizenRepo,
-) (string, string, error) {
+) (accessToken string, refreshToken string, roleName string, err error) {
+
+	// Check lockout
+	if s.Repo.IsLockedOut(ctx, phone) {
+		return "", "", "", errors.New("account temporarily locked due to too many failed attempts")
+	}
 
 	hash, err := s.Repo.GetValidOTPHash(ctx, phone)
 	if err != nil {
-		return "", "", errors.New("otp expired or not found")
+		s.Repo.RecordFailedAttempt(ctx, phone)
+		return "", "", "", errors.New("otp expired or not found")
 	}
 
 	if !crypto.VerifyOTP(hash, code) {
-		return "", "", errors.New("invalid otp")
+		s.Repo.RecordFailedAttempt(ctx, phone)
+		return "", "", "", errors.New("invalid otp")
 	}
 
+	// OTP verified — clear failed attempts and mark OTP used
+	s.Repo.ClearFailedAttempts(ctx, phone)
 	_ = s.Repo.MarkOTPUsed(ctx, phone)
+
+	var userID string
 
 	// 1. If role is specified, try to login as that specific role
 	if role != "" {
-		userID, err := citizenRepo.GetUserByPhoneAndRole(ctx, phone, role)
+		userID, err = citizenRepo.GetUserByPhoneAndRole(ctx, phone, role)
 		if err == nil && userID != "" {
-			token, err := utils.GenerateJWT(userID, role)
-			return token, role, err
+			return generateTokenPair(userID, role)
 		}
 
 		// If explicitly requested CITIZEN and not found -> Create it
 		if role == "CITIZEN" {
 			userID, err = citizenRepo.GetOrCreateCitizen(ctx, phone)
 			if err != nil {
-				return "", "", err
+				return "", "", "", err
 			}
-			token, err := utils.GenerateJWT(userID, "CITIZEN")
-			return token, "CITIZEN", err
+			return generateTokenPair(userID, "CITIZEN")
 		}
 
 		// If requested another role (e.g. FIELD_OFFICER) and not found -> Error
-		// We don't fall back to "any user" here because the user explicitly asked for this role
-		return "", "", fmt.Errorf("user not found with role: %s", role)
+		return "", "", "", fmt.Errorf("user not found with role: %s", role)
 	}
 
 	// 2. Fallback (Legacy): Get any user by phone
-	userID, roleName, err := s.Repo.GetUserByPhone(ctx, phone)
+	userID, roleName, err = s.Repo.GetUserByPhone(ctx, phone)
 	if err == nil {
-		token, err := utils.GenerateJWT(userID, roleName)
-		return token, roleName, err
+		return generateTokenPair(userID, roleName)
 	}
 
 	// 3. Fallback: Create citizen
 	userID, err = citizenRepo.GetOrCreateCitizen(ctx, phone)
 	if err != nil {
+		return "", "", "", err
+	}
+	return generateTokenPair(userID, "CITIZEN")
+}
+
+/* ---------- LOGOUT ---------- */
+
+func (s *Service) Logout(ctx context.Context, accessToken string, refreshToken string) error {
+	var errs []error
+	if accessToken != "" {
+		if err := utils.BlacklistToken(accessToken); err != nil {
+			errs = append(errs, fmt.Errorf("access token: %w", err))
+		}
+	}
+	if refreshToken != "" {
+		if err := utils.BlacklistToken(refreshToken); err != nil {
+			errs = append(errs, fmt.Errorf("refresh token: %w", err))
+		}
+	}
+	if len(errs) > 0 {
+		log.Println("⚠️ Logout partial errors:", errs)
+	}
+	return nil // Always succeed silently for UX
+}
+
+/* ---------- REFRESH ACCESS TOKEN ---------- */
+
+func (s *Service) RefreshAccessToken(ctx context.Context, refreshToken string) (string, string, error) {
+	claims, err := utils.ParseRefreshToken(refreshToken)
+	if err != nil {
 		return "", "", err
 	}
 
-	token, err := utils.GenerateJWT(userID, "CITIZEN")
-	return token, "CITIZEN", err
+	userID, _ := claims["user_id"].(string)
+	role, _ := claims["role"].(string)
+
+	if userID == "" || role == "" {
+		return "", "", errors.New("invalid refresh token claims")
+	}
+
+	// Blacklist old refresh token (rotation)
+	_ = utils.BlacklistToken(refreshToken)
+
+	// Issue new token pair
+	access, refresh, _, err := generateTokenPair(userID, role)
+	return access, refresh, err
+}
+
+/* ---------- HELPERS ---------- */
+
+func generateTokenPair(userID, role string) (string, string, string, error) {
+	access, err := utils.GenerateJWT(userID, role)
+	if err != nil {
+		return "", "", "", err
+	}
+	refresh, err := utils.GenerateRefreshToken(userID, role)
+	if err != nil {
+		return "", "", "", err
+	}
+	return access, refresh, role, nil
 }

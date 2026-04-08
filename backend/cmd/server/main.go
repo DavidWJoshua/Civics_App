@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 	"os"
 
@@ -21,6 +22,8 @@ import (
 	"civic-complaint-system/backend/internal/scheduler"
 	"civic-complaint-system/backend/pkg/spatial"
 
+	aws_config "github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/sns"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 )
@@ -38,7 +41,7 @@ func main() {
 	utils.SetJWTSecret(cfg.JWTSecret)
 
 	// Connect DB
-	pg, err := db.Connect(db.DBConfig{
+	pg, err := db.Connect(context.Background(), db.DBConfig{
 		Host: cfg.DBHost,
 		Port: cfg.DBPort,
 		Name: cfg.DBName,
@@ -49,6 +52,26 @@ func main() {
 		log.Fatal("❌ DB connection failed:", err)
 	}
 	log.Println("✅ PostgreSQL connected successfully")
+
+	// Initialize SNS Sender
+	var snsClient auth.SNSSender
+	if cfg.AWSAccessKey != "" && cfg.AWSSecretKey != "" {
+		awsCfg, err := aws_config.LoadDefaultConfig(context.Background(),
+			aws_config.WithRegion(cfg.AWSRegion),
+		)
+		if err == nil {
+			snsClient = &auth.AWSSNSSender{
+				Client: sns.NewFromConfig(awsCfg),
+			}
+			log.Println("✅ AWS SNS initialized successfully")
+		} else {
+			log.Printf("⚠️ Warning: Failed to load AWS config: %v. Falling back to Mock SNS.", err)
+			snsClient = &auth.MockSNSSender{}
+		}
+	} else {
+		snsClient = &auth.MockSNSSender{}
+		log.Println("✅ Mock SNS initialized (OTP logged in console)")
+	}
 
 	// ===========================
 	// LOAD WARDS FOR GEOLOCATION
@@ -80,9 +103,6 @@ func main() {
 		Config:   cfg,
 	}
 
-	snsClient := &auth.MockSNSSender{}
-	log.Println("✅ Mock SNS initialized (OTP logged in console)")
-
 	authRepo := &auth.Repository{DB: pg}
 	citizenRepo := &citizen.Repository{DB: pg}
 
@@ -102,8 +122,19 @@ func main() {
 	// HTTP SERVER
 	// ===========================
 
-	r := gin.Default()
+	r := gin.New()
+	r.Use(gin.Logger())
+	r.Use(gin.Recovery())
+	r.Use(middleware.SecurityHeaders())
 	r.Use(middleware.CORSMiddleware())
+	r.Use(middleware.GeneralRateLimit())
+	r.Use(middleware.LimitBodySize(10 * 1024 * 1024)) // 10MB Limit
+	r.Use(middleware.AuditLogger())
+
+	// Health check for AWS ALB
+	r.GET("/health", func(c *gin.Context) {
+		c.JSON(200, gin.H{"status": "UP"})
+	})
 
 	// Ensure upload directory exists
 	if _, err := os.Stat(cfg.UploadDir); os.IsNotExist(err) {
@@ -115,10 +146,9 @@ func main() {
 
 	api := r.Group("/api")
 
-	// PUBLIC ROUTES
+	// PUBLIC ROUTES (rate limiting applied per-route in auth/routes.go)
 	authRoutes := api.Group("/auth")
 	auth.RegisterRoutes(authRoutes, authHandler)
-	authRoutes.POST("/citizen/verify-otp", authHandler.VerifyOTP)
 
 	// ===========================
 	// CITIZEN ROUTES

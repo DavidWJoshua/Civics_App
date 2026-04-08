@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"strings"
 
+	"civic-complaint-system/backend/internal/common/utils"
+
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 )
@@ -55,8 +57,22 @@ func JWTAuthMiddleware() gin.HandlerFunc {
 			return
 		}
 
+		// Ensure it is an access token (not a refresh token used as access)
+		if tokenType, _ := claims["type"].(string); tokenType == "refresh" {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "refresh tokens cannot be used for API access"})
+			c.Abort()
+			return
+		}
+
+		// Check token blacklist (logged-out tokens)
+		if jti, ok := claims["jti"].(string); ok && utils.IsTokenBlacklisted(jti) {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "token has been revoked"})
+			c.Abort()
+			return
+		}
+
 		// Attach to context
-		log.Printf("🔐 JWT Claims: %+v", claims)
+		log.Printf("🔐 JWT Claims: user_id=%v role=%v", claims["user_id"], claims["role"])
 		if uid, ok := claims["user_id"].(string); ok {
 			c.Set("user_id", uid)
 		} else {

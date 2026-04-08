@@ -16,14 +16,21 @@ type DBConfig struct {
 	Pass string
 }
 
-func Connect(cfg DBConfig) (*pgxpool.Pool, error) {
+func Connect(ctx context.Context, cfg DBConfig) (*pgxpool.Pool, error) {
+	sslMode := "disable"
+	// If connecting to a remote host (like AWS RDS), default to sslmode=require
+	if cfg.Host != "localhost" && cfg.Host != "127.0.0.1" && cfg.Host != "" {
+		sslMode = "require"
+	}
+
 	dsn := fmt.Sprintf(
-		"postgres://%s:%s@%s:%s/%s",
+		"postgres://%s:%s@%s:%s/%s?sslmode=%s",
 		cfg.User,
 		cfg.Pass,
 		cfg.Host,
 		cfg.Port,
 		cfg.Name,
+		sslMode,
 	)
 
 	poolConfig, err := pgxpool.ParseConfig(dsn)

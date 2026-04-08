@@ -18,7 +18,7 @@ func main() {
 
 	cfg := config.LoadConfig()
 
-	pg, err := db.Connect(db.DBConfig{
+	pg, err := db.Connect(context.Background(), db.DBConfig{
 		Host: cfg.DBHost,
 		Port: cfg.DBPort,
 		Name: cfg.DBName,
