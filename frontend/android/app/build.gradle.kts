@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("kotlin-android")
@@ -6,7 +8,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.civic_complaint_system"
+    namespace = "com.civicsapp.civic_complaint_system"
     compileSdk = 36
     ndkVersion = flutter.ndkVersion
 
@@ -16,25 +18,44 @@ android {
     }
 
     kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_17.toString()
+        jvmTarget = "17"
+    }
+
+    val keystoreProperties = Properties()
+    val keystorePropertiesFile = rootProject.projectDir.resolve("key.properties")
+    if (keystorePropertiesFile.exists()) {
+        keystoreProperties.load(keystorePropertiesFile.inputStream())
+    }
+
+    signingConfigs {
+        create("release") {
+            keyAlias = keystoreProperties["keyAlias"] as String?
+            keyPassword = keystoreProperties["keyPassword"] as String?
+            storeFile = keystoreProperties["storeFile"]?.let { path -> file(path) }
+            storePassword = keystoreProperties["storePassword"] as String?
+        }
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.example.civic_complaint_system"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
+        // Application ID — must be unique on the Play Store.
+        // Using a proper reverse-domain format (com.yourname.appname)
+        applicationId = "com.civicsapp.civic_complaint_system"
+        // Minimum SDK: Android 5.0 (API 21) covers 99% of devices
         minSdk = flutter.minSdkVersion
         targetSdk = 36
+        // versionCode: increment by 1 on every Play Store upload
         versionCode = flutter.versionCode
+        // versionName: shown to users on the Play Store listing
         versionName = flutter.versionName
     }
 
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            // Signing with the release key defined above
+            signingConfig = signingConfigs.getByName("release")
+            // Disable code shrinking and obfuscation to fix the Gradle error
+            isMinifyEnabled = false
+            isShrinkResources = false
         }
     }
 }

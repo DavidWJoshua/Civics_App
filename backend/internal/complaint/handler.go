@@ -12,6 +12,7 @@ import (
 
 	"civic-complaint-system/backend/internal/ml"
 	"civic-complaint-system/backend/pkg/spatial"
+	"civic-complaint-system/backend/pkg/storage"
 
 	"civic-complaint-system/backend/config"
 
@@ -21,6 +22,7 @@ import (
 type Handler struct {
 	Service  *Service
 	MLClient *ml.Client
+	S3Client *storage.S3Client
 	Config   *config.Config
 }
 
@@ -90,8 +92,25 @@ func (h *Handler) RaiseComplaint(c *gin.Context) {
 			}
 		}
 
-		// Create Relative URL
-		imageURL = fmt.Sprintf("/uploads/%s", filename)
+		// Upload to S3 if configured
+		if h.S3Client != nil {
+			f, err := os.Open(path)
+			if err == nil {
+				s3URL, uploadErr := h.S3Client.UploadImage(c.Request.Context(), f, filename)
+				f.Close()
+				if uploadErr == nil {
+					imageURL = s3URL
+					// Optional: Clean up local file after successful S3 upload
+					os.Remove(path)
+				} else {
+					fmt.Printf("Failed to upload to S3: %v\n", uploadErr)
+					imageURL = fmt.Sprintf("/uploads/%s", filename) // Fallback to local
+				}
+			}
+		} else {
+			// Create Relative URL if S3 is not available
+			imageURL = fmt.Sprintf("/uploads/%s", filename)
+		}
 	}
 
 	// 5. Build Request DTO

@@ -16,6 +16,7 @@ type Config struct {
 	UploadDir       string
 	AESKey          string
 	AllowedOrigins  string
+	AWSS3Bucket     string
 }
 
 func LoadConfig() *Config {
@@ -37,6 +38,7 @@ func LoadConfig() *Config {
 		UploadDir:      getEnv("UPLOAD_DIR", "./uploads"),
 		AESKey:         getEnv("AES_KEY", "default-32-byte-key-change-this!!"),
 		AllowedOrigins: getEnv("ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:8080"),
+		AWSS3Bucket:    getEnv("AWS_S3_BUCKET", "civic-app-images"),
 	}
 }
 

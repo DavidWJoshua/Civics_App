@@ -21,6 +21,7 @@ import (
 	"civic-complaint-system/backend/internal/operator"
 	"civic-complaint-system/backend/internal/scheduler"
 	"civic-complaint-system/backend/pkg/spatial"
+	"civic-complaint-system/backend/pkg/storage"
 
 	aws_config "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/sns"
@@ -95,11 +96,22 @@ func main() {
 
 	mlClient := ml.NewClient(cfg.MLServiceURL)
 
+	// Initialize S3 Client
+	var s3Client *storage.S3Client
+	s3c, err := storage.NewS3Client(context.Background(), cfg.AWSS3Bucket, cfg.AWSRegion)
+	if err == nil {
+		s3Client = s3c
+		log.Println("✅ AWS S3 initialized successfully")
+	} else {
+		log.Printf("⚠️ Warning: Failed to load S3 config: %v. Falling back to local storage.", err)
+	}
+
 	complaintRepo := &complaint.Repository{DB: pg}
 	complaintService := &complaint.Service{Repo: complaintRepo}
 	complaintHandler := &complaint.Handler{
 		Service:  complaintService,
 		MLClient: mlClient,
+		S3Client: s3Client,
 		Config:   cfg,
 	}
 

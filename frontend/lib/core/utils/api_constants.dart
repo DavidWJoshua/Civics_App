@@ -1,4 +1,6 @@
 class ApiConstants {
-  // Update this to your AWS Endpoint (e.g., http://my-alb-123.us-east-1.elb.amazonaws.com)
-  static const String baseUrl = "https://your-api-endpoint.com";
+  // ─── AWS EC2 Backend ──────────────────────────────────────────────────────
+  // Live AWS EC2 instance running Go backend on port 8080
+  // TODO: Replace with HTTPS domain once Nginx + SSL is configured
+  static const String baseUrl = "http://65.0.101.19:8080";
 }

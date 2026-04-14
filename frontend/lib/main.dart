@@ -95,7 +95,7 @@ class _CivicAppState extends State<CivicApp> {
     return MaterialApp(
       navigatorKey: _navigatorKey,
       debugShowCheckedModeBanner: false,
-      title: 'Civic Complaint System',
+      title: 'Complaint System',
       theme: ThemeData(
         useMaterial3: true,
         scaffoldBackgroundColor: AppColors.background,

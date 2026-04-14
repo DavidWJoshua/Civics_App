@@ -24,6 +24,17 @@ subprojects {
             try {
                 androidExt.javaClass.getMethod("setCompileSdk", Int::class.java).invoke(androidExt, 36)
             } catch (e: Exception) {}
+
+            // 🛠 FIX: Namespace injection for legacy plugins
+            try {
+                val getNamespace = androidExt.javaClass.getMethod("getNamespace")
+                val setNamespace = androidExt.javaClass.getMethod("setNamespace", String::class.java)
+                if (getNamespace.invoke(androidExt) == null) {
+                    // Inject a namespace based on the project name
+                    val name = project.name.replace("-", "_").replace(".", "_")
+                    setNamespace.invoke(androidExt, "com.civicsapp.$name")
+                }
+            } catch (e: Exception) {}
         }
     }
 }
