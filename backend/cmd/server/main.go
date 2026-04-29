@@ -74,7 +74,11 @@ func main() {
 	// ===========================
 	// LOAD WARDS FOR GEOLOCATION
 	// ===========================
-	wardsFilePath := "../../resources/wards.json"
+	wardsFilePath := "resources/wards.json"
+	if _, err := os.Stat(wardsFilePath); os.IsNotExist(err) {
+		wardsFilePath = "../../resources/wards.json"
+	}
+	
 	if err := spatial.LoadWards(wardsFilePath); err != nil {
 		log.Printf("⚠️ Warning: Failed to load wards.json: %v. Ward auto-detection will not work.", err)
 	} else {
