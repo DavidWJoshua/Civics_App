@@ -55,23 +55,20 @@ func main() {
 	log.Println("✅ PostgreSQL connected successfully")
 
 	// Initialize SNS Sender
+	// We try to load the default AWS config. On EC2, this automatically detects IAM Roles!
 	var snsClient auth.SNSSender
-	if cfg.AWSAccessKey != "" && cfg.AWSSecretKey != "" {
-		awsCfg, err := aws_config.LoadDefaultConfig(context.Background(),
-			aws_config.WithRegion(cfg.AWSRegion),
-		)
-		if err == nil {
-			snsClient = &auth.AWSSNSSender{
-				Client: sns.NewFromConfig(awsCfg),
-			}
-			log.Println("✅ AWS SNS initialized successfully")
-		} else {
-			log.Printf("⚠️ Warning: Failed to load AWS config: %v. Falling back to Mock SNS.", err)
-			snsClient = &auth.MockSNSSender{}
+	awsCfg, awsErr := aws_config.LoadDefaultConfig(context.Background(),
+		aws_config.WithRegion(cfg.AWSRegion),
+	)
+
+	if awsErr == nil {
+		snsClient = &auth.AWSSNSSender{
+			Client: sns.NewFromConfig(awsCfg),
 		}
+		log.Println("✅ AWS SNS initialized successfully")
 	} else {
+		log.Printf("⚠️ Warning: Could not find AWS credentials (%v). Falling back to Mock SNS.", awsErr)
 		snsClient = &auth.MockSNSSender{}
-		log.Println("✅ Mock SNS initialized (OTP logged in console)")
 	}
 
 	// ===========================

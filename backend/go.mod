@@ -1,6 +1,6 @@
 module civic-complaint-system/backend
 
-go 1.21
+go 1.24.0
 
 require (
 	github.com/aws/aws-sdk-go-v2 v1.41.5

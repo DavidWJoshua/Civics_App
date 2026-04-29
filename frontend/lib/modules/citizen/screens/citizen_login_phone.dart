@@ -217,7 +217,7 @@ class _CitizenLoginPhoneState extends State<CitizenLoginPhone> {
                                                 child: CircularProgressIndicator(strokeWidth: 2),
                                               )
                                             : Image.network(
-                                                "${ApiConstants.baseUrl}/api/auth/citizen/captcha/$captchaId",
+                                                "${ApiConstants.baseUrl}/api/auth/citizen/captcha/$captchaId.png",
                                                 fit: BoxFit.contain,
                                                 key: ValueKey(captchaId),
                                                 loadingBuilder: (context, child, progress) {
