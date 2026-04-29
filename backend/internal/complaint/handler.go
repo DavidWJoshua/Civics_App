@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"time"
 
@@ -127,10 +128,12 @@ func (h *Handler) RaiseComplaint(c *gin.Context) {
 		ImageURL:  imageURL,
 	}
 
-	// Make sure req.Ward is purely numerical for the DB, or store as "" which might throw errors depending on DB driver.
-	// But it's assumed DB handles "19", etc. safely when cast as INT. If req.Ward == "Unknown", it might fail. Only keep numbers.
-	if req.Ward == "Unknown" || req.Ward == "" {
-		req.Ward = "" // Will handle in repository cautiously, but let's leave it as is for now.
+	// Extract only numeric characters from Ward (e.g., "Ward 19" -> "19")
+	re := regexp.MustCompile("[^0-9]+")
+	req.Ward = re.ReplaceAllString(req.Ward, "")
+
+	if req.Ward == "" {
+		req.Ward = "" 
 	}
 
 	citizenID := c.GetString("user_id")
